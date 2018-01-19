@@ -1,0 +1,34 @@
+
+Constraseña VaultInternal: 10042017
+
+Reiniciar node: 
+
+1) sudo pkill -f node
+
+2) node /home/vault/app/mediaplay-bus/app.js
+
+sudo apt-get install mongodb
+sudo service mongodb start 
+
+#################################
+Firefox:
+
+sudo apt-get purge firefox
+
+desactivar las actualizaciones
+
+sudo apt-get install firefox=45.0.2+build1-0ubuntu1
+
+##################################
+Configurar red:
+---------------
+Setear RUN="no" en este script
+sudo nano /etc/dhcp/dhclient-exit-hooks.d/rfc3442-classless-routes 
+--------------
+Agregar las linea (se ejecuta al iniciar la raspberry)
+en sudo nano /etc/rc.local
+
+ip route del default
+node /home/vault/app/mediaplay-bus/app.js
+--------------
+#################################
