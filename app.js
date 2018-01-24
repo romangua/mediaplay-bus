@@ -11,7 +11,6 @@ var _downloadingFile = false;
 var _pathCaption = '/home/vault/app/mediaplay-bus/';
 var _pathImage = '/home/vault/app/mediaplay-bus/';
 var _pathVideo = '/home/vault/app/mediaplay-bus/';
-var _indexSync = 0;
 var mimeNames = {
     '.css': 'text/css',
     '.html': 'text/html',
@@ -60,216 +59,167 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
     });
 
 // Sincroniza los videos con la base
-function syncToBase() {
+async function syncToBase() {
     try {
         // Obtenemos el json de videos desde la base
-        request.get("http://10.255.255.54:3000/syncToBase", function (err, res, body) {
-            if (!err) {
-                var videosBase = JSON.parse(body);
-                var numberToSync = getLenghtArray(videosBase);
+        var response = await request.get("http://10.255.255.54:3000/syncToBase");
+        var videosBase = JSON.parse(response.body);
 
-                // Obtenemos la lista de videos de la BD
-                Video.find({}, (err, videos) => {
-                    if (err) {
-						_downloadingFile = false;
-						return console.error("Error al obtener todos los videos syncToBase: " + err);
-					}
+        // Priorizamos eliminar videos de la BD
+        // Recorro la lista de videos de la bd para ver si hay alguno que no este en la lista de videos de base
+        await syncDelete(videosBase);
 
-                    // Priorizamos eliminar videos de la BD
-                    // Recorro la lista de videos de la bd para ver si hay alguno que no este en 
-                    // la lista de videos de base
-                    syncDelete(videos, videosBase);
+        // Sincronizamos los videos con firebase
+        for(var i in videosFirebase) {
+            var video = await Video.findOne({ id: videosFirebase[i].id }).exec();
 
-                    // Emparejamos la BD con respecto a la base
-                    // Primero vemos si quedan elementos por sincronizar
-                    if (_indexSync < numberToSync) {
-                        // Buscamos el video por id en la bd
-                        Video.findOne({ id: videosBase[_indexSync].id }, (err, video) => {
-                            if (err) {
-								_downloadingFile = false;
-								return console.error("Error al obtener el registro de la bd: " + err);
-							}
-
-                            // Esta en la BD de la base
-                            if (video != null) {
-                                syncUpdate(video.metadata.version, videosBase[_indexSync]);
-                            }
-                            // No esta en la BD de la base
-                            else {
-                                syncInsert(videosBase[_indexSync]);
-                            }
-                        });
-                    }
-                    else {
-                        _indexSync = 0;
-                        _downloadingFile = false;
-                    }
-                });
+            // Esta en la BD de la base
+            if (video != null) {
+                await syncUpdate(video.metadata.version, videosFirebase[i]);
             }
-			else {				
-                _downloadingFile = false;
-				return console.error("Error de red: " + err);
-			}
-        });
-    }
-    catch (err) {        
-        _downloadingFile = false;
-        return console.error("Ocurrio un error inesperado: " + err);
-    }
-}
-
-function syncDelete(registrosBd, registrosBase) {
-	try {    
-		for (var i in registrosBd) {
-
-		    // Recorremos la lista de videos de base
-		    var keep = false;
-		    for (var x in registrosBase) {
-		        // Si el video esta en base hay que mantenerlo, sino eliminarlo
-		        if (registrosBd[i].id == registrosBase[x].id) {
-		            keep = true;
-		        }
-		    }
-
-		    // Si no esta en la base lo eliminamos
-		    if (!keep) {
-
-				console.log("-----------------------");
-				console.log("Inicio de eliminacion del registro id: " + registrosBd[i].id); 
-
-		        // Primero borramos de la bd el registro
-		        Video.findOne({ id: registrosBd[i].id }, (err, video) => {
-		            if (err) return console.error("Error al buscar el video para eliminarlo: " + err);
-
-		            if (video != null) {
-		                video.remove(err => {
-		                    if (err) return console.error("Error al eliminar el registro id " + registrosBd[i].id + " de la bd: " + err);
-
-		                    console.log("El registro id " + registrosBd[i].id + " fue eliminado de la bd");
-		                })
-		            }
-		        });
-
-		        // Borramos la imagen
-		        var imageDelete = registrosBd[i].image;
-		        imageDelete = imageDelete.substring(imageDelete.lastIndexOf("/") + 1, imageDelete.lenght);
-		        deleteFile(_pathImage + imageDelete);
-
-		        // Borramos los subtitulos
-		        for (var x in registrosBd[i].caption) {
-		            var captionDelete = registrosBd[i].caption[x].src;
-		            if (captionDelete) {
-		                captionDelete = captionDelete.substring(captionDelete.lastIndexOf("/") + 1, captionDelete.lenght);
-		                deleteFile(_pathCaption + captionDelete);
-		            }
-		        }
-
-		        // Borramos el video
-		        var videoDelete = registrosBd[i].url;
-		        videoDelete = videoDelete.substring(videoDelete.lastIndexOf("=") + 1, videoDelete.lenght);
-		        deleteFile(_pathVideo + videoDelete);
-		    }
-		}
-	}
-	catch(err) {
-		return console.error("Se produjo un error inesperado en syncDelete: " + err);
-	}
-}
-
-function deleteFile(path) {
-    fs.unlink(path, function (err) {
-        if (err) {
-            return console.error("Error al eliminar el archivo: " + path + "-- Error: " + err);
+            // No esta en la BD de la base
+            else {
+                await syncInsert(videosFirebase[i]);
+            }
         }
-        console.log("Archivo eliminado: " + path);
-    });
+    }
+    catch(err) {
+        _downloadingFile = false;
+        return console.error("Se produjo un error inesperado: " + err);
+    }
 }
 
-function syncInsert(registroBase) {
-	try {
-		console.log("-----------------------------");
-		console.log("Inicio de descarga del registro id: " + registroBase.id);
+async function syncDelete(registrosBase) {
+    // Obtenemos la lista de videos de la BD
+    var registrosBd = await Video.find({}).exec();
+    for (var i in registrosBd) {
 
-		// Primero descargamos el video 
-		download(registroBase.video.urlBase, _pathVideo)
-		.then(() => {
-		    console.log("Finalizo la descarga del video id: " + registroBase.id)
+        // Recorremos la lista de videos de la base
+        var keep = false;
+        for (var x in registrosBase) {
+            // Si el video esta en la base hay que mantenerlo, sino eliminarlo
+            if (registrosBd[i].id == registrosBase[x].id) {
+                keep = true;
+            }
+        }
 
-		    // Descargamos la imagen
-		    download(registroBase.image.urlBase, _pathImage)
-		    .then(() => {
-		        console.log("Finalizo la descarga de la imagen id: " + registroBase.id)
+        // Si no esta en la base lo eliminamos
+        if (!keep) {
+            
+            console.log("-------------------------");
+            console.log("Inicio de eliminacion del registro id: " + registrosBd[i].id);
 
-		        // Descargamos los subtitulos. TODO-Se puede descargar hasta 2 por ahora.
-		        var lenght = getLenghtArray(registroBase.caption);
-		        if (lenght > 0) {
-		            var index = 0;
-		            download(registroBase.caption[index].urlBase, _pathCaption)
-		            .then(() => {
-		                console.log("Finalizo la descarga del subtitulo id: " + registroBase.id + " index: " + index);
+            // Primero borramos de la bd el registro
+            await Video.findOneAndRemove({ id: registrosBd[i].id }).exec();
+            console.log("El registro id " + registrosBd[i].id + " fue eliminado de la bd");
 
-		                index++;
-		                if (index == lenght) {
-		                    insertInBD(registroBase);
-		                }
-		                else {
-		                    download(registroBase.caption[index].urlBase, _pathCaption)
-		                    .then(() => {
-		                        console.log("Finalizo la descarga del subtitulo id: " + registroBase.id + " index: " + index);
+            // Borramos la imagen
+            var imageDelete = registrosBd[i].image.url;
+            imageDelete = imageDelete.substring(imageDelete.lastIndexOf("/") + 1, imageDelete.lenght);
+            await deleteFile(_pathImage + imageDelete);
 
-		                        insertInBD(registroBase);
-		                    });
-		                }
-		            });
-		        } else {
-		            insertInBD(registroBase);
-		        }
-		    });
-        });
-	} catch(err) {
-		return console.error("Se produjo un error inesperado en syncInsert: " + err);
-	}
+            // Borramos los subtitulos
+            for (var x in registrosBd[i].caption.cap) {
+                var captionDelete = registrosBd[i].caption.cap[x].url;
+                if (captionDelete) {
+                    captionDelete = captionDelete.substring(captionDelete.lastIndexOf("/") + 1, captionDelete.lenght);
+                    await deleteFile(_pathCaption + captionDelete);
+                }
+            }
+
+            // Borramos el video
+            var videoDelete = registrosBd[i].video.url;
+            videoDelete = videoDelete.substring(videoDelete.lastIndexOf("=") + 1, videoDelete.lenght);
+            await deleteFile(_pathVideo + videoDelete);
+
+            // Borramos la publicidad
+            if(registrosBd[i].advertising) {
+                // Borramos ads video
+                for (var x in registrosBd[i].advertising.video) {
+                    var adsVideo = registrosBd[i].advertising.video[x].url;
+                    if (adsVideo) {
+                        adsVideo = adsVideo.substring(adsVideo.lastIndexOf("/") + 1, adsVideo.lenght);
+                        await deleteFile(_pathVideo + adsVideo);
+                    }
+                }
+
+                // Borramos ads image
+                for (var x in registrosBd[i].advertising.image) {
+                    var adsImage = registrosBd[i].advertising.image[x].url;
+                    if (adsImage) {
+                        adsImage = adsImage.substring(adsImage.lastIndexOf("/") + 1, adsImage.lenght);
+                        await deleteFile(_pathImage + adsImage);
+                    }
+                }
+            }
+        }
+    }
 }
 
-function insertInBD(value) {
-    // Parseamos el objeto y registramos en la bd
-    var video = parserToInsert(value);
-    video.save((err, stored) => {
-        if (err) return console.error("Error al insertar el registro id " + value.id + " en la bd: " + err);
-
-        console.log("Finalizo la descarga y se inserto el video id: " + video.id);
-        _indexSync++;
-        syncToBase();
-    });
+async function deleteFile(path) {
+    await fs.unlink(path, ()=>{});
+    console.log("Archivo eliminado: " + path);
 }
 
-function syncUpdate(registroBdVersion, registroBase) {
-	try {
-		console.log("-------------------------");
-		console.log("Inicio de actualizacion del registro id: " + registroBase.id);
+async function syncInsert(registroBase) {
+    console.log("-------------------------");
+    console.log("Inicio de descarga del registro id: " + registroBase.id);
 
-		if (registroBdVersion != registroBase.metadata.version) {
+    // Primero descargamos el video 
+    await download(registroBase.video.urlBase, _pathVideo)
+    console.log("Finalizo la descarga del video id: " + registroBase.id)
 
-		    // Parseamos el objecto para actualizarlo
-		    var videoParsed = parserToUpdate(registroBase);
+    // Descargamos la imagen
+    await download(registroBase.image.urlBase, _pathImage)
+    console.log("Finalizo la descarga de la imagen id: " + registroBase.id)
 
-		    //console.log(JSON.stringify(videoParsed))
-		    Video.update({ id: registroBase.id }, videoParsed, err => {
-		        if (err) return console.error("Error actualizando el registro id " + registroBase.id + " en la bd: " + err);
+    // Descargamos la publicidad
+    if(registroBase.advertising) {
+        // Videos
+        if(registroBase.advertising.video) {
+            for(var i in registroBase.advertising.video) {
+                await download(registroBase.advertising.video[i].urlBase, _pathVideo)
+                console.log("Finalizo la descarga del ads video id: " + registroBase.id + " index: " + i)
+            }
+        }
+        // Imagenes
+        if(registroBase.advertising.image) {
+            for(var i in registroBase.advertising.image) {
+                await download(registroBase.advertising.image[i].urlBase, _pathImage)
+                console.log("Finalizo la descarga del ads image id: " + registroBase.id + " index: " + i)
+            }
+        }
+    }
 
-		        console.log("Finalizo la actualizacion del registro id " + registroBase.id + " en la bd");
-		        _indexSync++;
-		        syncToBase();
-		    });
-		}
-		else {
-		    console.log("No fue necesaria la actualizacion del registro id " + registroBase.id + " en la bd");
-		    _indexSync++;
-		    syncToBase();
-		}
-	} catch(err) {
-		return console.error("Se produjo un error inesperado en syncUpdate: " + err);
-	}
+    // Descargamos los subtitulos
+    if(registroBase.caption) {
+        for(var i in registroBase.caption.cap) {
+            await download(registroBase.caption.cap[i].urlBase, _pathCaption)
+            console.log("Finalizo la descarga del subtitulo id: " + registroBase.id + " index: " + i)
+        }
+    }
+
+    // Insertamos el registro en la bd
+    var video = parserToInsert(registroBase);
+    await video.save();
+    console.log("Finalizo la descarga y se inserto el video id: " + video.id);
+}
+
+async function syncUpdate(registroBdVersion, registroBase) {
+    console.log("-------------------------");
+    console.log("Inicio de actualizacion del registro id: " + registroBase.id);
+
+    if (registroBdVersion != registroBase.metadata.version) {
+
+        // Parseamos el objecto para actualizarlo
+        var videoParsed = parserToUpdate(registroBase);
+
+        await Video.update({ id: registroBase.id }, videoParsed).exec()
+        console.log("Finalizo la actualizacion del registro id " + registroBase.id + " en la bd");
+    }
+    else {
+        console.log("No fue necesaria la actualizacion del registro id " + registroBase.id + " en la bd");  
+    }
 }
 
 function parserToInsert(value) {
@@ -290,16 +240,38 @@ function parserToInsert(value) {
         version: value.metadata.version
     };
 
-    for (var i in value.caption) {
-        video.caption.push({
-            label: value.caption[i].label,
-            languaje: value.caption[i].languaje,
-            src: value.caption[i].src,
-            kind: value.caption[i].kind,
-            default: value.caption[i].default
-        });
+    if(value.caption) {
+        for (var i in value.caption.cap) {
+            video.caption.cap.push({
+                label: value.caption.cap[i].label,
+                url: value.caption.cap[i].url
+            });
+        }
+        video.caption.default = value.caption.default;
     }
+   
+    if(value.advertising) {
+        if(value.advertising.video) {
+            for(var i in value.advertising.video) {
+                video.advertising.video.push({
+                    start: value.advertising.video[i].start,
+                    hold: value.advertising.video[i].hold,
+                    url: value.advertising.video[i].url
+                });
+            }
+        }
 
+        if(value.advertising.image) {
+            for(var i in value.advertising.image) {
+                video.advertising.image.push({
+                    start: value.advertising.image[i].start,
+                    end: value.advertising.image[i].end,
+                    hold: value.advertising.image[i].hold,
+                    url: value.advertising.image[i].url
+                });
+            }
+        }
+    }
     return video;
 }
 
@@ -318,17 +290,7 @@ function parserToUpdate(value) {
             "version": value.metadata.version
         }
     }
-
     return video;
-}
-
-// Funcion para contar el numero de objetos dentro de un array
-function getLenghtArray(value) {
-    var count = 0;
-    for (var i in value) {
-        count++;
-    }
-    return count;
 }
 
 // SoloTest: Endpoint para limpiar la BD

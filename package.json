@@ -1,5 +1,5 @@
 {
-  "name": "mob-media-player-base",
+  "name": "mediaplay-bus",
   "version": "1.0.0",
   "description": "media app",
   "main": "app.js",
