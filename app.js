@@ -1,6 +1,6 @@
 var express = require('express');
 var fs = require('fs');
-var request = require('request');
+var request = require('request-promise');
 var download = require('download');
 var url = require('url');
 var CronJob = require('cron').CronJob;
@@ -40,7 +40,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
         console.log("Mongoo DB conectada correctamente");
         app.listen(3000, () => console.log("Api REST running on http://localhost:3000"));
 
-		//Se ejecuta cada 15min
+		//Se ejecuta cada 5min
 		var jobUpdate = new CronJob({
 			cronTime: '5 * * * * *',
 			onTick: function () {
@@ -63,23 +63,23 @@ async function syncToBase() {
     try {
         // Obtenemos el json de videos desde la base
         var response = await request.get("http://10.255.255.54:3000/syncToBase");
-        var videosBase = JSON.parse(response.body);
+        var videosBase = JSON.parse(response);
 
         // Priorizamos eliminar videos de la BD
         // Recorro la lista de videos de la bd para ver si hay alguno que no este en la lista de videos de base
         await syncDelete(videosBase);
 
-        // Sincronizamos los videos con firebase
-        for(var i in videosFirebase) {
-            var video = await Video.findOne({ id: videosFirebase[i].id }).exec();
+        // Sincronizamos los videos con la base
+        for(var i in videosBase) {
+            var video = await Video.findOne({ id: videosBase[i].id }).exec();
 
             // Esta en la BD de la base
             if (video != null) {
-                await syncUpdate(video.metadata.version, videosFirebase[i]);
+                await syncUpdate(video.metadata.version, videosBase[i]);
             }
             // No esta en la BD de la base
             else {
-                await syncInsert(videosFirebase[i]);
+                await syncInsert(videosBase[i]);
             }
         }
     }
@@ -307,7 +307,7 @@ app.get('/deleteAll', function(req,res, next) {
 				});
 			}
 		}
-		res.status(200).send({ message: "Se eliminaron " + getLenghtArray(video) + " videos" });
+		res.status(200).send({ message: "Se eliminaron   videos" });
     });
 });
 

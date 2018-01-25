@@ -11,11 +11,22 @@ sudo apt-get install mongodb
 sudo service mongodb start 
 
 #################################
+Actualizar a Node7
+
+curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+#################################
 Firefox:
 
 sudo apt-get purge firefox
 
 desactivar las actualizaciones
+/vault/.mozilla/firefox/7mzjiqxn.default/prefs.js/ 
+o por navegador en about:config
+user_pref("app.update.enabled", false);
+user_pref("app.update.auto", false);
+user_pref("app.update.silent", false);
 
 sudo apt-get install firefox=45.0.2+build1-0ubuntu1
 
