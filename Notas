@@ -7,8 +7,17 @@ Reiniciar node:
 
 2) node /home/vault/app/mediaplay-bus/app.js
 
+#################################
+
 sudo apt-get install mongodb
 sudo service mongodb start 
+
+#################################
+Autoiniciar la app
+sudo npm install forever -g
+forever start app.js //la inicia
+forever list //vemos si esta corriendo
+forever stop 0 //la matamos
 
 #################################
 Actualizar a Node7
@@ -40,6 +49,5 @@ Agregar las linea (se ejecuta al iniciar la raspberry)
 en sudo nano /etc/rc.local
 
 ip route del default
-node /home/vault/app/mediaplay-bus/app.js
 --------------
 #################################
