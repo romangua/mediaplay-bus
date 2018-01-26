@@ -14,10 +14,18 @@ sudo service mongodb start
 
 #################################
 Autoiniciar la app
-sudo npm install forever -g
-forever start app.js //la inicia
-forever list //vemos si esta corriendo
-forever stop 0 //la matamos
+
+chmod +x ./app.js
+sudo npm install -g pm2
+pm2 start app.js
+pm2 startup systemd
+Ejecutar el comando que te devuelve el comando startup
+
+pm2 list
+pm2 stop app
+pm2 restart app
+pm2 info app
+
 
 #################################
 Actualizar a Node7
