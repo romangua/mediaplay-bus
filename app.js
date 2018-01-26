@@ -41,9 +41,9 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
         logger.info("Mongoo DB conectada correctamente");
         app.listen(3000, () => logger.info("Api REST running on http://localhost:3000"));
 
-		//Se ejecuta cada 1min
+		//Se ejecuta cada 5min
 		var jobUpdate = new CronJob({
-			cronTime: '*/1 * * * *',
+			cronTime: '*/5 * * * *',
 			onTick: function () {
 				if (!_downloadingFile) {
 			   	   _downloadingFile = true;
