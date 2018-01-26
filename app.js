@@ -42,7 +42,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
 
 		//Se ejecuta cada 5min
 		var jobUpdate = new CronJob({
-			cronTime: '5 * * * * *',
+			cronTime: '* 5 * * * *',
 			onTick: function () {
 
 				if (!_downloadingFile) {
@@ -62,7 +62,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
 async function syncToBase() {
     try {
         // Obtenemos el json de videos desde la base
-        var response = await request.get("http://10.255.255.54:3000/syncToBase");
+        var response = await request.get("http://192.168.1.100:3000/syncToBase");
         var videosBase = JSON.parse(response);
 
         // Priorizamos eliminar videos de la BD
