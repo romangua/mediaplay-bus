@@ -105,11 +105,7 @@ async function syncDelete(registrosBase) {
         }
 
         // Si no esta en la base lo eliminamos
-        if (!keep) {
-            
-            logger.info("-------------------------");
-            logger.info("Inicio de eliminacion del registro id: " + registrosBd[i].id);
-
+        if (!keep) {            
             // Primero borramos de la bd el registro
             await Video.findOneAndRemove({ id: registrosBd[i].id }).exec();
             logger.info("El registro id " + registrosBd[i].id + " fue eliminado de la bd");
@@ -163,16 +159,14 @@ async function deleteFile(path) {
 }
 
 async function syncInsert(registroBase) {
-    logger.info("-------------------------");
-    logger.info("Inicio de descarga del registro id: " + registroBase.id);
 
     // Primero descargamos el video 
     await download(registroBase.video.urlBase, _pathVideo)
-    logger.info("Finalizo la descarga del video id: " + registroBase.id)
+    //logger.info("Finalizo la descarga del video id: " + registroBase.id)
 
     // Descargamos la imagen
     await download(registroBase.image.urlBase, _pathImage)
-    logger.info("Finalizo la descarga de la imagen id: " + registroBase.id)
+    //logger.info("Finalizo la descarga de la imagen id: " + registroBase.id)
 
     // Descargamos la publicidad
     if(registroBase.advertising) {
@@ -180,14 +174,14 @@ async function syncInsert(registroBase) {
         if(registroBase.advertising.video) {
             for(var i in registroBase.advertising.video) {
                 await download(registroBase.advertising.video[i].urlBase, _pathVideo)
-                logger.info("Finalizo la descarga del ads video id: " + registroBase.id + " index: " + i)
+                //logger.info("Finalizo la descarga del ads video id: " + registroBase.id + " index: " + i)
             }
         }
         // Imagenes
         if(registroBase.advertising.image) {
             for(var i in registroBase.advertising.image) {
                 await download(registroBase.advertising.image[i].urlBase, _pathImage)
-                logger.info("Finalizo la descarga del ads image id: " + registroBase.id + " index: " + i)
+                //logger.info("Finalizo la descarga del ads image id: " + registroBase.id + " index: " + i)
             }
         }
     }
@@ -196,7 +190,7 @@ async function syncInsert(registroBase) {
     if(registroBase.caption) {
         for(var i in registroBase.caption.cap) {
             await download(registroBase.caption.cap[i].urlBase, _pathCaption)
-            logger.info("Finalizo la descarga del subtitulo id: " + registroBase.id + " index: " + i)
+            //logger.info("Finalizo la descarga del subtitulo id: " + registroBase.id + " index: " + i)
         }
     }
 
@@ -207,9 +201,6 @@ async function syncInsert(registroBase) {
 }
 
 async function syncUpdate(registroBdVersion, registroBase) {
-    logger.info("-------------------------");
-    logger.info("Inicio de actualizacion del registro id: " + registroBase.id);
-
     if (registroBdVersion != registroBase.metadata.version) {
 
         // Parseamos el objecto para actualizarlo

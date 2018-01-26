@@ -8,14 +8,14 @@ var logger = new winston.Logger({
             handleExceptions: true,
             json: false,
             colorize: false,
-			timestamp: function() { return new Date()}
+			timestamp: function() { return new Date().toLocaleString()}
         }),
         new winston.transports.Console({
             level: 'debug',
             handleExceptions: true,
             json: false,
             colorize: true,
-            timestamp: function() { return new Date()}
+            timestamp: function() { return new Date().toLocaleString()}
         })
     ],
     exitOnError: false
