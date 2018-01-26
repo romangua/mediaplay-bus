@@ -82,6 +82,7 @@ async function syncToBase() {
                 await syncInsert(videosBase[i]);
             }
         }
+        _downloadingFile = false;
     }
     catch(err) {
         _downloadingFile = false;
