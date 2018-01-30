@@ -17,15 +17,16 @@ Autoiniciar la app
 
 chmod +x ./app.js
 sudo npm install -g pm2
-pm2 start app.js
+pm2 start 0 --log-date-format "YYYY-MM-DD HH:mm"
 pm2 startup systemd
 Ejecutar el comando que te devuelve el comando startup
 
 pm2 list
+pm2 start 0 --log-date-format "YYYY-MM-DD HH:mm"
 pm2 stop app
 pm2 restart app
 pm2 info app
-
+pm2 log --lines 1000
 
 #################################
 Actualizar a Node7

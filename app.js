@@ -44,7 +44,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
 		var jobUpdate = new CronJob({
 			cronTime: '*/5 * * * *',
 			onTick: function () {
-                cosole.log("Entro cron: " + "DownloadingFile: " + _downloadingFile);
+                console.log("Entro cron: " + "DownloadingFile: " + _downloadingFile);
 				if (!_downloadingFile) {
 			   	   _downloadingFile = true;
 				   syncToBase();
@@ -61,6 +61,9 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
 // Sincroniza los videos con la base
 async function syncToBase() {
     try {
+
+		console.log("--------Inicio de sincronizacion-------");
+
         // Obtenemos el json de videos desde la base
         var response = await request.get("http://192.168.1.100:3000/syncToBase");
         var videosBase = JSON.parse(response);
@@ -82,6 +85,7 @@ async function syncToBase() {
                 await syncInsert(videosBase[i]);
             }
         }
+		console.log("--------Finalizo la sincronizacion-------");        
         _downloadingFile = false;
     }
     catch(err) {
@@ -105,13 +109,14 @@ async function syncDelete(registrosBase) {
         }
 
         // Si no esta en la base lo eliminamos
-        if (!keep) {            
+        if (!keep) {   
+         
             // Primero borramos de la bd el registro
             await Video.findOneAndRemove({ id: registrosBd[i].id }).exec();
             console.log("El registro id " + registrosBd[i].id + " fue eliminado de la bd");
 
             // Borramos la imagen
-            var imageDelete = registrosBd[i].image.url;
+            var imageDelete = registrosBd[i].image;
             imageDelete = imageDelete.substring(imageDelete.lastIndexOf("/") + 1, imageDelete.lenght);
             await deleteFile(_pathImage + imageDelete);
 
@@ -125,7 +130,7 @@ async function syncDelete(registrosBase) {
             }
 
             // Borramos el video
-            var videoDelete = registrosBd[i].video.url;
+            var videoDelete = registrosBd[i].url;
             videoDelete = videoDelete.substring(videoDelete.lastIndexOf("=") + 1, videoDelete.lenght);
             await deleteFile(_pathVideo + videoDelete);
 
@@ -162,11 +167,11 @@ async function syncInsert(registroBase) {
 
     // Primero descargamos el video 
     await download(registroBase.video.urlBase, _pathVideo)
-    //console.log("Finalizo la descarga del video id: " + registroBase.id)
+    console.log("Finalizo la descarga del video id: " + registroBase.id)
 
     // Descargamos la imagen
     await download(registroBase.image.urlBase, _pathImage)
-    //console.log("Finalizo la descarga de la imagen id: " + registroBase.id)
+    console.log("Finalizo la descarga de la imagen id: " + registroBase.id)
 
     // Descargamos la publicidad
     if(registroBase.advertising) {
@@ -174,14 +179,14 @@ async function syncInsert(registroBase) {
         if(registroBase.advertising.video) {
             for(var i in registroBase.advertising.video) {
                 await download(registroBase.advertising.video[i].urlBase, _pathVideo)
-                //console.log("Finalizo la descarga del ads video id: " + registroBase.id + " index: " + i)
+                console.log("Finalizo la descarga del ads video id: " + registroBase.id + " index: " + i)
             }
         }
         // Imagenes
         if(registroBase.advertising.image) {
             for(var i in registroBase.advertising.image) {
                 await download(registroBase.advertising.image[i].urlBase, _pathImage)
-                //console.log("Finalizo la descarga del ads image id: " + registroBase.id + " index: " + i)
+                console.log("Finalizo la descarga del ads image id: " + registroBase.id + " index: " + i)
             }
         }
     }
@@ -190,7 +195,7 @@ async function syncInsert(registroBase) {
     if(registroBase.caption) {
         for(var i in registroBase.caption.cap) {
             await download(registroBase.caption.cap[i].urlBase, _pathCaption)
-            //console.log("Finalizo la descarga del subtitulo id: " + registroBase.id + " index: " + i)
+            console.log("Finalizo la descarga del subtitulo id: " + registroBase.id + " index: " + i)
         }
     }
 
