@@ -78,7 +78,6 @@ async function syncToBase() {
 			timeout: 10000 //10s
 		};				
         var videosBase = await request(options);
-        //var videosBase = JSON.parse(response);
 
         // Priorizamos eliminar videos de la BD
         // Recorro la lista de videos de la bd para ver si hay alguno que no este en la lista de videos de base
