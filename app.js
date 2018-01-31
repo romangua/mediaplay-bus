@@ -65,8 +65,20 @@ async function syncToBase() {
 		console.log("--------Inicio de sincronizacion-------");
 
         // Obtenemos el json de videos desde la base
-        var response = await request.get("http://192.168.1.100:3000/syncToBase");
-        var videosBase = JSON.parse(response);
+		var options = {
+			method: 'get',
+			uri: 'http://192.168.1.100:3000/syncToBase',
+			qs: { 
+				access_token: 'TODO'
+			},
+			headers: {
+				'User-Agent': 'Request-Promise'
+			},
+			json: true,
+			timeout: 10000 //10s
+		};				
+        var videosBase = await request(options);
+        //var videosBase = JSON.parse(response);
 
         // Priorizamos eliminar videos de la BD
         // Recorro la lista de videos de la bd para ver si hay alguno que no este en la lista de videos de base

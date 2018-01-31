@@ -31,7 +31,7 @@ pm2 log --lines 1000
 #################################
 Actualizar a Node7
 
-curl -sL https://deb.nodesource.com/setup_7.x | sudo -E bash -
+curl -sL https://deb.nodesource.com/setup_9.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 #################################
