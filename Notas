@@ -5,7 +5,14 @@ Reiniciar node:
 
 1) sudo pkill -f node
 
-2) node /home/vault/app/mediaplay-bus/app.js
+#################################
+Para evitar este error:
+ [ERROR NETWORK] Got some major errors from our scan command:Error: Command failed: sudo iwlist wlan0 scan
+1|app      | sudo: no tty present and no askpass program specified
+
+sudo visudo
+Agregar al final del archiv:
+vault ALL=(ALL) NOPASSWD: ALL
 
 #################################
 

@@ -6,11 +6,17 @@ var url = require('url');
 var CronJob = require('cron').CronJob;
 var mongoose = require('mongoose');
 var Video = require('./models/videos');
+var Wireless = require('wireless');
+var exec = require('child_process').exec, child;
 
 var _downloadingFile = false;
 var _pathCaption = '/home/vault/app/mediaplay-bus/';
 var _pathImage = '/home/vault/app/mediaplay-bus/';
 var _pathVideo = '/home/vault/app/mediaplay-bus/';
+var _wifiSsid = 'InterCordoba_BASE';
+var _wifiPassword = 'password';
+var _isNetworkConnected = false;
+var _isNetworkConnecting = false;
 var mimeNames = {
     '.css': 'text/css',
     '.html': 'text/html',
@@ -24,6 +30,66 @@ var mimeNames = {
     '.wav': 'audio/x-wav',
     '.webm': 'video/webm'
 };
+
+// Inicializo la lib wirelles
+var wireless = new Wireless({
+    iface: 'wlan0',
+	updateFrequency: 10, // Optional, seconds to scan for networks
+	connectionSpyFrequency: 2, // Optional, seconds to scan if connected
+	vanishThreshold: 2 // Optional, how many scans before network considered gone
+});
+
+// Cuando se detiene el node se ejecuta este evento 
+// que detiene la funcion de analisar el wifi
+process.on('SIGINT', function() {
+	wireless.stop();
+});
+
+// Iniciamos el scaneo de wifi
+wireless.enable(function(err) {
+	if(err)
+		return console.error('[FAILURE] Unable to enable wireless card');
+		
+	wireless.start();
+});
+
+// Se conecta a un red wifi
+wireless.on('join', function(network) {
+    console.log("[JOIN NETWORK] " + network.ssid);	
+    _isNetworkConnected = true;
+});
+
+// Evento que recibe las diferentes redes wifi, scanea cada updateFrequency: 10 segundos
+wireless.on('signal', function(network) {	
+ 	if(network.ssid == _wifiSsid && !_isNetworkConnected  && !_isNetworkConnecting) {
+        _isNetworkConnecting = true;
+        
+        // Conecto la wifi
+        child = exec("sudo nmcli device wifi connect '" + _wifiSsid + "' password '" + _wifiPassword + "'", function(err, stdout, stderr) {		       
+		  if (err) {
+			console.error("Error al intentan conectarse a la red " + _wifiSsid + ": " + err);
+		  }   		
+		  _isNetworkConnecting = false;	
+		});
+	}
+});
+
+// Se desconecta de la red wifi
+// Si se estaba realizando una descarga, reinicia el node
+wireless.on('leave', function() {
+    console.log("[LEAVE NETWORK] Left the network");
+	if(_downloadingFile) {
+   		child = exec('pm2 restart 0');
+	}
+	_isNetworkConnected = false; 
+	_isNetworkConnecting = false;	
+	
+});	
+
+// Indica un error
+wireless.on('error', function(message) {
+    console.log("[ERROR NETWORK] " + message);
+});
 
 // Inicializacion de Express
 var app = express();
@@ -44,9 +110,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
 		var jobUpdate = new CronJob({
 			cronTime: '*/5 * * * *',
 			onTick: function () {
-                console.log("Entro cron: " + "DownloadingFile: " + _downloadingFile);
-				if (!_downloadingFile) {
-			   	   _downloadingFile = true;
+				if (!_downloadingFile && _isNetworkConnected) {			   	   
 				   syncToBase();
 				} 
 			},
@@ -61,7 +125,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
 // Sincroniza los videos con la base
 async function syncToBase() {
     try {
-
+		_downloadingFile = true;
 		console.log("--------Inicio de sincronizacion-------");
 
         // Obtenemos el json de videos desde la base
@@ -74,8 +138,7 @@ async function syncToBase() {
 			headers: {
 				'User-Agent': 'Request-Promise'
 			},
-			json: true,
-			timeout: 10000 //10s
+			json: true
 		};				
         var videosBase = await request(options);
 
@@ -96,13 +159,18 @@ async function syncToBase() {
                 await syncInsert(videosBase[i]);
             }
         }
-		console.log("--------Finalizo la sincronizacion-------");        
-        _downloadingFile = false;
     }
     catch(err) {
-        _downloadingFile = false;
-        return console.error("Se produjo un error inesperado: " + err);
+        console.error("Se produjo un error inesperado: " + err);
     }
+	finally {
+		syncToBaseEnd();               
+	}	
+}
+
+function syncToBaseEnd() {
+    console.log("--------Finalizo la sincronizacion-------");	
+	_downloadingFile = false;
 }
 
 async function syncDelete(registrosBase) {
