@@ -15,6 +15,7 @@ var _pathImage = '/home/vault/app/mediaplay-bus/';
 var _pathVideo = '/home/vault/app/mediaplay-bus/';
 var _wifiSsid = 'InterCordoba_BASE';
 var _wifiPassword = 'password';
+var _ipBase = "http://192.168.1.101:3000/";
 var _gatewayEth0 = '192.168.1.1';
 var _isNetworkConnected = false;
 var _isNetworkConnecting = false;
@@ -52,7 +53,7 @@ wireless.enable(function(err) {
 		return console.error('[FAILURE] Unable to enable wireless card');
 		
 	// Veo si ya estamos conectado a la wifi
-	child = exec("iwgetid -r", function(err, stdout, stderr) {		       
+	child = exec("sudo iwgetid -r", function(err, stdout, stderr) {		       
 	  if (err) {
 		console.error("error al verificar el nombre de a red " + _wifiSsid + ": " + err);
 	  } 
@@ -97,10 +98,10 @@ wireless.on('signal', function(network) {
 wireless.on('leave', function() {
     console.log("[LEAVE NETWORK] Left the network");
 	if(_downloadingFile) {
-   		child = exec('pm2 restart 0');
-		_isNetworkConnected = false; 
-	    _isNetworkConnecting = false;
+   		child = exec('pm2 restart 0');		
 	}	
+	_isNetworkConnected = false; 
+	_isNetworkConnecting = false;
 });	
 
 // Indica un error
@@ -148,7 +149,7 @@ async function syncToBase() {
         // Obtenemos el json de videos desde la base
 		var options = {
 			method: 'get',
-			uri: 'http://192.168.1.100:3000/syncToBase',
+			uri: _ipBase + 'syncToBase',
 			qs: { 
 				access_token: 'TODO'
 			},
