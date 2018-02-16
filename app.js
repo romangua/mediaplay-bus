@@ -15,6 +15,7 @@ var _pathImage = '/home/vault/app/mediaplay-bus/';
 var _pathVideo = '/home/vault/app/mediaplay-bus/';
 var _wifiSsid = 'InterCordoba_BASE';
 var _wifiPassword = 'password';
+var _gatewayEth0 = '192.168.1.1';
 var _isNetworkConnected = false;
 var _isNetworkConnecting = false;
 var mimeNames = {
@@ -84,6 +85,10 @@ wireless.on('signal', function(network) {
 		  }   		
 		  _isNetworkConnecting = false;	
 		});
+		
+		// Elimino el gateway de la lan
+        child = exec("sudo route del default gw " + _gatewayEth0, function(err, stdout, stderr) {				
+		});
 	}
 });
 
@@ -93,10 +98,9 @@ wireless.on('leave', function() {
     console.log("[LEAVE NETWORK] Left the network");
 	if(_downloadingFile) {
    		child = exec('pm2 restart 0');
-	}
-	_isNetworkConnected = false; 
-	_isNetworkConnecting = false;	
-	
+		_isNetworkConnected = false; 
+	    _isNetworkConnecting = false;
+	}	
 });	
 
 // Indica un error
@@ -114,7 +118,7 @@ app.use(function (req, res, next) {
 
 // Conexion a la BD y a NodeJs
 mongoose.Promise = global.Promise;
-mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: true })
+mongoose.connect('mongodb://localhost:27017/MediaPlay_Bus_BD', { useMongoClient: true })
     .then(() => {
         console.log("Mongoo DB conectada correctamente");
         app.listen(3000, () => console.log("Api REST running on http://localhost:3000"));
