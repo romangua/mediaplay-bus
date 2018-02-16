@@ -16,7 +16,7 @@ var _pathVideo = '/home/vault/app/mediaplay-bus/';
 var _wifiSsid = 'InterCordoba_BASE';
 var _wifiPassword = 'password';
 var _ipBase = "http://192.168.1.101:3000/";
-var _gatewayEth0 = '192.168.1.1';
+var _gatewayEth0 = '192.168.0.254';
 var _isNetworkConnected = false;
 var _isNetworkConnecting = false;
 var mimeNames = {
@@ -86,11 +86,11 @@ wireless.on('signal', function(network) {
 		  }   		
 		  _isNetworkConnecting = false;	
 		});
-		
-		// Elimino el gateway de la lan
-        child = exec("sudo route del default gw " + _gatewayEth0, function(err, stdout, stderr) {				
-		});
 	}
+	
+	// Elimino el gateway de la lan
+	child = exec("sudo route del default gw " + _gatewayEth0, function(err, stdout, stderr) {				
+	});
 });
 
 // Se desconecta de la red wifi
