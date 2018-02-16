@@ -56,7 +56,9 @@ wireless.enable(function(err) {
 // Se conecta a un red wifi
 wireless.on('join', function(network) {
     console.log("[JOIN NETWORK] " + network.ssid);	
-    _isNetworkConnected = true;
+    if(network.ssid == _wifiSsid) {
+		_isNetworkConnected = true;
+	}
 });
 
 // Evento que recibe las diferentes redes wifi, scanea cada updateFrequency: 10 segundos
